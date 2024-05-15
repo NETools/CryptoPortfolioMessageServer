@@ -1,5 +1,6 @@
 ﻿using CryptoPortfolioMessageServer.Models.Api;
 using CryptoPortfolioMessageServer.Models.Messages;
+using CryptoPortfolioMessageServer.Models.Messages.Dtos;
 using CryptoPortfolioMessageServer.Models.Messages.Security;
 using CryptoPortfolioMessageServer.Models.Messages.Session;
 using CryptoPortfolioMessageServer.Models.Persistence;
@@ -18,7 +19,7 @@ using System.Text.Json;
 
 namespace CryptoPortfolioMessageServer.Receiver
 {
-	public class MessageReceiver
+    public class MessageReceiver
 	{
 		private static CryptoPortfolioDbContext DbContext = new();
 
@@ -40,18 +41,22 @@ namespace CryptoPortfolioMessageServer.Receiver
 
 		public async Task Start()
 		{
-			using var cancelSrc = new CancellationTokenSource(5000);
-			try
+			while (true)
 			{
-				Logger.Default().WriteLine($"Attempting to connect to host", LoggerState.Normal);
-				await _consumer.Connect(cancelSrc.Token);
-				_consumer.MessageReceived += OnMessageReceived;
-				Logger.Default().WriteLine($"Connected", LoggerState.Okay);
-			}
-			catch (Exception ex)
-			{
-				Logger.Default().WriteLine($"Connection failed (timeout)!", LoggerState.Error);
-				return;
+				using var cancelSrc = new CancellationTokenSource(5000);
+				try
+				{
+					Logger.Default().WriteLine($"Attempting to connect to host", LoggerState.Normal);
+					await _consumer.Connect(cancelSrc.Token);
+					_consumer.MessageReceived += OnMessageReceived;
+					Logger.Default().WriteLine($"Connected", LoggerState.Okay);
+
+					break;
+				}
+				catch (Exception ex)
+				{
+					Logger.Default().WriteLine($"Connection failed (timeout)!", LoggerState.Error);
+				}
 			}
 
 			var channel = await _consumer.OpenChannel("PortfolioExchangeService");
@@ -109,7 +114,7 @@ namespace CryptoPortfolioMessageServer.Receiver
 				case GenericMessageType.SignInMessage:
 					return await HandleSignInMessage(genericMessage.ConvertData<CredentialsMessage>(_handshakes[id].SharedKey, _handshakes[id].SharedIV));
 				case GenericMessageType.UpdateTransactionMessage:
-					await HandleUpdateTransactionMessage(genericMessage.ConvertData<UpdateTransactionsMessage>(_handshakes[id].SharedKey, _handshakes[id].SharedIV));
+					await HandleUpdateTransactionMessage(genericMessage.ConvertData<TransactionDto>(_handshakes[id].SharedKey, _handshakes[id].SharedIV));
 					break;
 			}
 
@@ -136,7 +141,11 @@ namespace CryptoPortfolioMessageServer.Receiver
 			{
 				response.Message = "Loaded portfolio successfully.";
 				response.Status = HttpStatusCode.OK;
-				response.Data = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(result.Portfolio.Assets));
+				response.Data = new MessageBusRetrievalMessage()
+				{
+					RetrievalType = RetrievalType.Portfolio,
+					StructBuffer = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(result.Portfolio.Assets))
+				}.ToJsonBytes(Encoding.UTF8);
 			}
 
 			return new ApiResponse<GenericMessageType>()
@@ -286,9 +295,31 @@ namespace CryptoPortfolioMessageServer.Receiver
 			};
 
 		}
-		private async Task HandleUpdateTransactionMessage(UpdateTransactionsMessage message)
+		private async Task<ApiResponse<GenericMessageType>> HandleUpdateTransactionMessage(TransactionDto message)
 		{
+			var transaction = new Transaction();
+			message.CopyTo(transaction);
 
+			var result = await DbContext.UpdateTransaction(message.Username, transaction, message.Action);
+			ResponseMessage response = new ResponseMessage();
+
+			if (result.ResponseCode == PersistenceResponse.AssetsUpdated)
+			{
+				response.Message = "Asset added to portfolio.";
+				response.Status = HttpStatusCode.OK;
+			}
+			else
+			{
+				response.Message = $"Asset not added: {result.Message}.";
+				response.Status = HttpStatusCode.NotModified;
+			}
+
+			return new ApiResponse<GenericMessageType>()
+			{
+				ResponseCode = GenericMessageType.UpdatePortfolioMessage,
+				Data = response.ToJsonBytes(Encoding.UTF8),
+				Message = response.Message
+			};
 		}
 
 		private static SignedMessage<T> SignMessage<T>(Guid id, T messageType, byte[] data, string privateKey) where T : Enum

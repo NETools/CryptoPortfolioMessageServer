@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CryptoPortfolioMessageServer.Migrations
 {
     [DbContext(typeof(CryptoPortfolioDbContext))]
-    [Migration("20240501114221_InitialCreate")]
+    [Migration("20240515214123_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -33,6 +33,44 @@ namespace CryptoPortfolioMessageServer.Migrations
                     b.HasKey("PortfolioId");
 
                     b.ToTable("Portfolios");
+                });
+
+            modelBuilder.Entity("CryptoPortfolioMessageServer.Models.Persistence.Transaction", b =>
+                {
+                    b.Property<int>("TransactionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("AmountEur")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("CoinId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("PricePerCoin")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("QuantityCoins")
+                        .HasColumnType("REAL");
+
+                    b.Property<Guid>("TransactionGuid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TransactionSide")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("TransactionId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Transaction");
                 });
 
             modelBuilder.Entity("CryptoPortfolioMessageServer.Models.Persistence.User", b =>
@@ -65,6 +103,13 @@ namespace CryptoPortfolioMessageServer.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("CryptoPortfolioMessageServer.Models.Persistence.Transaction", b =>
+                {
+                    b.HasOne("CryptoPortfolioMessageServer.Models.Persistence.User", null)
+                        .WithMany("Transactions")
+                        .HasForeignKey("UserId");
+                });
+
             modelBuilder.Entity("CryptoPortfolioMessageServer.Models.Persistence.User", b =>
                 {
                     b.HasOne("CryptoPortfolioMessageServer.Models.Persistence.Portfolio", "Portfolio")
@@ -74,6 +119,11 @@ namespace CryptoPortfolioMessageServer.Migrations
                         .IsRequired();
 
                     b.Navigation("Portfolio");
+                });
+
+            modelBuilder.Entity("CryptoPortfolioMessageServer.Models.Persistence.User", b =>
+                {
+                    b.Navigation("Transactions");
                 });
 #pragma warning restore 612, 618
         }

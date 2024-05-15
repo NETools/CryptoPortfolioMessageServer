@@ -32,6 +32,44 @@ namespace CryptoPortfolioMessageServer.Migrations
                     b.ToTable("Portfolios");
                 });
 
+            modelBuilder.Entity("CryptoPortfolioMessageServer.Models.Persistence.Transaction", b =>
+                {
+                    b.Property<int>("TransactionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("AmountEur")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("CoinId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("PricePerCoin")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("QuantityCoins")
+                        .HasColumnType("REAL");
+
+                    b.Property<Guid>("TransactionGuid")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("TransactionSide")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("TransactionId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Transaction");
+                });
+
             modelBuilder.Entity("CryptoPortfolioMessageServer.Models.Persistence.User", b =>
                 {
                     b.Property<int>("Id")
@@ -62,6 +100,13 @@ namespace CryptoPortfolioMessageServer.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("CryptoPortfolioMessageServer.Models.Persistence.Transaction", b =>
+                {
+                    b.HasOne("CryptoPortfolioMessageServer.Models.Persistence.User", null)
+                        .WithMany("Transactions")
+                        .HasForeignKey("UserId");
+                });
+
             modelBuilder.Entity("CryptoPortfolioMessageServer.Models.Persistence.User", b =>
                 {
                     b.HasOne("CryptoPortfolioMessageServer.Models.Persistence.Portfolio", "Portfolio")
@@ -71,6 +116,11 @@ namespace CryptoPortfolioMessageServer.Migrations
                         .IsRequired();
 
                     b.Navigation("Portfolio");
+                });
+
+            modelBuilder.Entity("CryptoPortfolioMessageServer.Models.Persistence.User", b =>
+                {
+                    b.Navigation("Transactions");
                 });
 #pragma warning restore 612, 618
         }

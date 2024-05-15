@@ -45,4 +45,17 @@ namespace CryptoPortfolioMessageServer.Shared.Data
 		Add,
 		Remove
 	}
+
+	public enum RetrievalType
+	{
+		Null,
+		Portfolio,
+		Transaction
+	}
+
+	public enum TransactionSide
+	{
+		Buy,
+		Sell
+	}
 }

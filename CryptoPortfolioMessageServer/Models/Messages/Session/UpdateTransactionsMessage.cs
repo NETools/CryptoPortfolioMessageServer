@@ -8,5 +8,6 @@ namespace CryptoPortfolioMessageServer.Models.Messages
 {
 	internal struct UpdateTransactionsMessage
 	{
+
 	}
 }

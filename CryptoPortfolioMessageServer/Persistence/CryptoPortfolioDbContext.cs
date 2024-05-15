@@ -1,4 +1,5 @@
 ﻿using CryptoPortfolioMessageServer.Models.Api;
+using CryptoPortfolioMessageServer.Models.Messages.Dtos;
 using CryptoPortfolioMessageServer.Models.Persistence;
 using CryptoPortfolioMessageServer.Shared;
 using CryptoPortfolioMessageServer.Shared.Comparators;
@@ -22,7 +23,6 @@ namespace CryptoPortfolioMessageServer.Persistence
 
 		public DbSet<User> Users { get; set; }
 		public DbSet<Portfolio> Portfolios { get; set; }
-
 		protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 		{
 			optionsBuilder.UseSqlite($"Data Source={DbPath}");
@@ -33,6 +33,12 @@ namespace CryptoPortfolioMessageServer.Persistence
 			modelBuilder
 				.Entity<User>()
 				.Navigation(e => e.Portfolio)
+				.UsePropertyAccessMode(PropertyAccessMode.Property)
+				.AutoInclude();
+
+			modelBuilder
+				.Entity<User>()
+				.Navigation(e => e.Transactions)
 				.UsePropertyAccessMode(PropertyAccessMode.Property)
 				.AutoInclude();
 
@@ -53,6 +59,58 @@ namespace CryptoPortfolioMessageServer.Persistence
 				return await Users
 					.Where(p => p.Username == username)
 					.FirstOrDefaultAsync();
+			}
+		}
+
+
+
+		public async Task<ApiResponse<PersistenceResponse>> UpdateTransaction(
+			string username,
+			Transaction transaction,
+			TransactionType action)
+		{
+			using (_mutex.GetLock())
+			{
+				var user = await FindUser(username);
+				if(user == null)
+				{
+					return new ApiResponse<PersistenceResponse>()
+					{
+						Data = null,
+						ResponseCode = PersistenceResponse.UserNotFound,
+						Message = "User could not be found."
+					};
+				}
+
+				if (action == TransactionType.Add)
+				{
+					user.Transactions.Add(transaction);
+				}
+				else if (action == TransactionType.Remove)
+				{
+					user.Transactions.Remove(transaction);
+				}
+
+
+				if (await Save())
+				{
+					return new ApiResponse<PersistenceResponse>()
+					{
+						Data = user.ClassToJsonBytes(Encoding.UTF8),
+						ResponseCode = PersistenceResponse.AssetsUpdated,
+						Message = "Transaction added to user."
+					};
+				}
+				else
+				{
+					return new ApiResponse<PersistenceResponse>()
+					{
+						ResponseCode = PersistenceResponse.FatalError,
+						//Data = null,antonia enes
+						Data = null,
+						Message = $"Fatal error -- see exception on console."
+					};
+				}
 			}
 		}
 

@@ -17,6 +17,7 @@ namespace CryptoPortfolioMessageServer.Models.Persistence
 		public string Password { get; set; }
 		
 		public Portfolio Portfolio { get; set; }
+		public virtual IList<Transaction> Transactions { get; set; } = [];
 
 		public bool IsActivated { get; set; }
 		public Guid ActivationId { get; set; } = Guid.NewGuid();
